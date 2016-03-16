@@ -1,12 +1,20 @@
 import java.awt.Color;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Image;
+import java.util.List;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.Stack;
+import java.util.stream.Collectors;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -16,13 +24,15 @@ import javax.swing.Timer;
 
 public class Screen extends JPanel implements ActionListener, KeyListener {
 	
+
+	
 	private static final long serialVersionUID = 1L;
 
 	private final static int CELL_SIZE = 25;
 	private final static int INICIAL_POSITION = 0;
 	
-	private int width;
-	private int height;
+	private static int width;
+	private static int height;
 	
 	private int x_bloco;
 	private int y_bloco;
@@ -46,10 +56,18 @@ public class Screen extends JPanel implements ActionListener, KeyListener {
 	Stack<Crumb> stack = new Stack<Crumb>();
 	Boneco boneco = new Boneco();
 	
-	private boolean[][] labyrinth;
-	private boolean[][] caminho;
+	private static boolean[][] labyrinth;
+	private static boolean[][] caminho;
+	
+	private static String[][] labirintoR;
 
-	public Screen(boolean[][] labyrinth) {
+	public Screen() {
+		
+		try {
+			Screen.readFiles();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 				
 		y_bloco= INICIAL_POSITION;
 		x_bloco= INICIAL_POSITION;
@@ -61,9 +79,6 @@ public class Screen extends JPanel implements ActionListener, KeyListener {
 		yLimiteUp= this.width - y_bloco;
 		xLimiteRight =this.width- x_bloco;
 		xLimiteLeft =x_bloco;
-	
-		this.labyrinth = labyrinth;
-		caminho = deepCopy(labyrinth);
 		
 		this.width = this.labyrinth[0].length;
 		this.height = this.labyrinth.length;
@@ -87,8 +102,6 @@ public class Screen extends JPanel implements ActionListener, KeyListener {
 		
 		caminho[boneco.y][boneco.x] = false;
 
-
-
 		timer.start();
 	}
 
@@ -105,8 +118,7 @@ public class Screen extends JPanel implements ActionListener, KeyListener {
 			}
 
 				if(labyrinth[i][j]) {
-					g.setColor(Color.WHITE);
-					
+					g.setColor(Color.WHITE);	
 				}
 				else {
 					g.setColor(Color.BLACK);
@@ -115,8 +127,7 @@ public class Screen extends JPanel implements ActionListener, KeyListener {
 				g.fillRect(x, y, CELL_SIZE, CELL_SIZE);
 				
 			}
-
-			
+		
 		}
     	
 		g.drawImage(image, boneco.x, boneco.y, CELL_SIZE, CELL_SIZE, null);
@@ -127,10 +138,14 @@ public class Screen extends JPanel implements ActionListener, KeyListener {
     }
 	
 	public void keyPressed(KeyEvent e) {
-    	int key = e.getKeyCode();
-
-
-    	if(key == KeyEvent.VK_LEFT) {
+    	
+		int key = e.getKeyCode();
+		if(x_bloco == (xBolo*CELL_SIZE) && y_bloco == (yBolo*CELL_SIZE)) {
+			System.out.println("VOCE GANHOU!");
+			timer.stop();
+		} 
+		
+		else if(key == KeyEvent.VK_LEFT) {
     		if(x_bloco == xLimiteLeft - CELL_SIZE) {
     		}
     		
@@ -170,7 +185,7 @@ public class Screen extends JPanel implements ActionListener, KeyListener {
     			y_bloco = y_bloco + CELL_SIZE;
     		}
     		
-    	repaint();
+    		repaint();
     	}
     }
 	
@@ -185,14 +200,11 @@ public class Screen extends JPanel implements ActionListener, KeyListener {
 		Crumb crumb = stack.peek();
 		
 		if (boneco.x == (xBolo*CELL_SIZE) && boneco.y == (yBolo*CELL_SIZE)) {
+			System.out.println("VOCE PERDEU!");
 			timer.stop();
 		}
 		
-		else if(x_bloco == (xBolo*CELL_SIZE) && y_bloco == (yBolo*CELL_SIZE)) {
-			timer.stop();
-		} 
-		
-		if (crumb.getPasses() == 0){
+		else if (crumb.getPasses() == 0){
 			if(boneco.x >0 && caminho[boneco.y/CELL_SIZE][(boneco.x/CELL_SIZE)-1]){
 				caminho [boneco.y/CELL_SIZE][boneco.x/CELL_SIZE] =false;	
 				boneco.x = boneco.x- CELL_SIZE;
@@ -200,7 +212,7 @@ public class Screen extends JPanel implements ActionListener, KeyListener {
 				stack.push(new Crumb(boneco.x, boneco.y));
 				repaint();
 			}
-				crumb.incrementPasses();	
+			crumb.incrementPasses();	
 		}
 					
 		else if(crumb.getPasses() == 1){
@@ -211,7 +223,7 @@ public class Screen extends JPanel implements ActionListener, KeyListener {
 				stack.push(new Crumb(boneco.x, boneco.y));
 				repaint();
 			}
-				crumb.incrementPasses();		
+			crumb.incrementPasses();		
 		}
 		
 		else if(crumb.getPasses()==2){
@@ -221,7 +233,7 @@ public class Screen extends JPanel implements ActionListener, KeyListener {
 				stack.push(new Crumb(boneco.x, boneco.y));
 				repaint();
 			}
-				crumb.incrementPasses();			
+			crumb.incrementPasses();			
 		}
 		
 		else if(crumb.getPasses()==3) {
@@ -231,7 +243,7 @@ public class Screen extends JPanel implements ActionListener, KeyListener {
 				stack.push(new Crumb(boneco.x, boneco.y));
 				repaint();
 			}
-				crumb.incrementPasses();
+			crumb.incrementPasses();
 			
 		}
 		
@@ -243,18 +255,38 @@ public class Screen extends JPanel implements ActionListener, KeyListener {
 		}
 			repaint();
 		}
-
-	public static boolean[][] deepCopy(boolean[][] original) {
+	
+	private static void readFiles() throws IOException{
+		
+		List<String> argumentos = Files.lines(Paths.get("labyrinth.txt"))
+	    .collect(Collectors.toList());
+		
+		int linha = 0;
+		labirintoR = new String[argumentos.size()][];
+		for(String i : argumentos){
+			String[] temp = i.split("");
+			labirintoR[linha] = temp;
+			linha++;
+		}
+		
+		labyrinth = new boolean[labirintoR.length][labirintoR[0].length];
+		caminho = new boolean[labirintoR.length][labirintoR[0].length];
+		
+		for(int j = 0; j != labirintoR.length; j++){
+			for(int i = 0; i != labirintoR[0].length; i++){
 				
-		if (original == null) {
-	        return null;
-	    }
+				if(labirintoR[j][i].startsWith("#")){
+					labyrinth[j][i] = false;
+					caminho[j][i] = false;
+				}
+				else{
+					labyrinth[j][i] = true;
+					caminho[j][i] = true;
+				}
+			}
+		}
 
-	    final boolean[][] result = new boolean[original.length][];
-	    for (int i = 0; i < original.length; i++) {
-	        result[i] = Arrays.copyOf(original[i], original[i].length);
-	    }
-	    return result;
+
 	}
 }
 		

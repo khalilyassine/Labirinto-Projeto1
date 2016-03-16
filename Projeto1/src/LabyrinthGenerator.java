@@ -107,7 +107,7 @@ public class LabyrinthGenerator {
 
 		javax.swing.SwingUtilities.invokeLater(new Runnable() {
             public void run() {
-                Screen screen = new Screen(labyrinth);
+                Screen screen = new Screen();
 
                 JFrame frame = new JFrame("Labyrinth Generator");
                 frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
